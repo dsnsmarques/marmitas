@@ -1,8 +1,7 @@
 
 import React, { useState } from 'react';
-import { MenuItem, Selection, Order, CategoryConfig, Category, Employee } from '../types';
-import { CATEGORIES } from '../constants';
-import { CheckCircle, AlertCircle, Info, User } from 'lucide-react';
+import { MenuItem, Selection, Order, CategoryConfig, Category, Employee, CATEGORIES } from '../types';
+import { CheckCircle, AlertCircle, Info, User, UserPlus } from 'lucide-react';
 
 interface OrderFormProps {
   menu: MenuItem[];
@@ -14,6 +13,8 @@ interface OrderFormProps {
 
 export const OrderForm: React.FC<OrderFormProps> = ({ menu, onPlaceOrder, categoryConfigs, companyName, employees }) => {
   const [employeeName, setEmployeeName] = useState('');
+  const [manualName, setManualName] = useState('');
+  const [isManual, setIsManual] = useState(false);
   const [selections, setSelections] = useState<Selection>({
     Principal: [], Mistura: [], Guarnição: [], Salada: [],
   });
@@ -24,8 +25,10 @@ export const OrderForm: React.FC<OrderFormProps> = ({ menu, onPlaceOrder, catego
     e.preventDefault();
     setError('');
 
-    if (!employeeName) {
-      setError('Por favor, selecione seu nome na lista.');
+    const finalName = isManual ? manualName.trim() : employeeName;
+
+    if (!finalName) {
+      setError('Por favor, informe ou selecione seu nome.');
       return;
     }
 
@@ -39,13 +42,15 @@ export const OrderForm: React.FC<OrderFormProps> = ({ menu, onPlaceOrder, catego
 
     onPlaceOrder({
       id: crypto.randomUUID(),
-      employeeName,
+      employeeName: finalName,
       selections,
       timestamp: Date.now(),
     });
 
     setSuccess(true);
     setEmployeeName('');
+    setManualName('');
+    setIsManual(false);
     setSelections({ Principal: [], Mistura: [], Guarnição: [], Salada: [] });
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setTimeout(() => setSuccess(false), 4000);
@@ -90,20 +95,42 @@ export const OrderForm: React.FC<OrderFormProps> = ({ menu, onPlaceOrder, catego
 
       <form onSubmit={handleSubmit} className="space-y-8">
         <div className="bg-orange-50/50 p-6 rounded-2xl border border-orange-100">
-          <label className="flex items-center gap-2 text-xs font-black text-orange-600 mb-3 uppercase tracking-widest">
-            <User className="w-4 h-4" /> Selecione seu Nome
-          </label>
-          <select
-            value={employeeName}
-            onChange={(e) => setEmployeeName(e.target.value)}
-            className="w-full p-4 border-2 border-white bg-white rounded-xl focus:border-orange-500 focus:ring-0 outline-none text-lg font-bold text-gray-700 shadow-sm transition-all"
-          >
-            <option value="">Clique para escolher...</option>
-            {employees.sort((a, b) => a.name.localeCompare(b.name)).map(emp => (
-              <option key={emp.id} value={emp.name}>{emp.name}</option>
-            ))}
-          </select>
-          {employees.length === 0 && (
+          <div className="flex justify-between items-center mb-3">
+            <label className="flex items-center gap-2 text-xs font-black text-orange-600 uppercase tracking-widest">
+              {isManual ? <UserPlus className="w-4 h-4" /> : <User className="w-4 h-4" />} 
+              {isManual ? 'Digite seu Nome' : 'Selecione seu Nome'}
+            </label>
+            <button 
+              type="button" 
+              onClick={() => setIsManual(!isManual)}
+              className="text-[10px] font-black uppercase text-orange-400 hover:text-orange-600 underline"
+            >
+              {isManual ? 'Escolher da lista' : 'Inserir manualmente'}
+            </button>
+          </div>
+          
+          {isManual ? (
+            <input
+              type="text"
+              value={manualName}
+              onChange={(e) => setManualName(e.target.value)}
+              placeholder="Seu nome completo"
+              className="w-full p-4 border-2 border-white bg-white rounded-xl focus:border-orange-500 focus:ring-0 outline-none text-lg font-bold text-gray-700 shadow-sm transition-all"
+            />
+          ) : (
+            <select
+              value={employeeName}
+              onChange={(e) => setEmployeeName(e.target.value)}
+              className="w-full p-4 border-2 border-white bg-white rounded-xl focus:border-orange-500 focus:ring-0 outline-none text-lg font-bold text-gray-700 shadow-sm transition-all"
+            >
+              <option value="">Clique para escolher...</option>
+              {employees.sort((a, b) => a.name.localeCompare(b.name)).map(emp => (
+                <option key={emp.id} value={emp.name}>{emp.name}</option>
+              ))}
+            </select>
+          )}
+          
+          {employees.length === 0 && !isManual && (
             <p className="text-[10px] text-orange-400 mt-2 italic font-medium">Nenhum funcionário cadastrado no sistema.</p>
           )}
         </div>
@@ -138,7 +165,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ menu, onPlaceOrder, catego
 
         <button
           type="submit"
-          disabled={employees.length === 0}
+          disabled={!isManual && employees.length === 0}
           className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-gray-200 text-white p-5 rounded-2xl font-black text-xl transition-all transform active:scale-95 shadow-xl shadow-orange-100"
         >
           ENVIAR PEDIDO

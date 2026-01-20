@@ -168,6 +168,30 @@ if ($method == 'DELETE' && $action == 'deleteMenuItem') {
     exit;
 }
 
+// Deletar Pedido Individual
+if ($method == 'DELETE' && $action == 'deleteOrder') {
+    $id = $_GET['id'] ?? '';
+    $stmt = $pdo->prepare("DELETE FROM orders WHERE id = ?");
+    $stmt->execute([$id]);
+    echo json_encode(["status" => "success"]);
+    exit;
+}
+
+// Alterar Senha Admin
+if ($method == 'POST' && $action == 'changeAdminPassword') {
+    $data = json_decode(file_get_contents("php://input"), true);
+    if (!isset($data['newPassword'])) {
+        http_response_code(400);
+        echo json_encode(["error" => "Dados inválidos"]);
+        exit;
+    }
+    $hashedPassword = password_hash($data['newPassword'], PASSWORD_DEFAULT);
+    $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE username = 'admin'");
+    $stmt->execute([$hashedPassword]);
+    echo json_encode(["status" => "success"]);
+    exit;
+}
+
 // Limpar Pedidos
 if ($method == 'DELETE' && $action == 'clearOrders') {
     $pdo->exec("DELETE FROM orders");

@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { MenuItem, Order, CategoryConfig, Category, Employee } from './types';
-import { INITIAL_MENU, INITIAL_CONFIGS } from './constants';
+import { MenuItem, Order, CategoryConfig, Category, Employee, CATEGORIES, INITIAL_CONFIGS } from './types';
 import { MenuManager } from './components/MenuManager';
 import { OrderForm } from './components/OrderForm';
 import { OrderList } from './components/OrderList';
@@ -186,7 +185,7 @@ const App: React.FC = () => {
   const handleDeleteOrder = async (id: string) => {
     try {
       setOrders(prev => prev.filter(o => o.id !== id));
-      // Backend does not have specific individual delete yet, but keeping UI in sync
+      await fetch(`${API_URL}?action=deleteOrder&id=${id}`, { method: 'DELETE' });
     } catch (err) {
       console.error("Erro ao deletar pedido:", err);
     }

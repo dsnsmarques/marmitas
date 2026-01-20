@@ -1,8 +1,7 @@
 
 import React, { useState } from 'react';
-import { MenuItem, Category, CategoryConfig, Employee } from '../types';
-import { CATEGORIES } from '../constants';
-import { Plus, Trash2, ToggleLeft, ToggleRight, Sparkles, Edit2, Check, X, Building, Save, Users, Settings2 } from 'lucide-react';
+import { MenuItem, Category, CategoryConfig, Employee, CATEGORIES } from '../types';
+import { Plus, Trash2, ToggleLeft, ToggleRight, Sparkles, Edit2, Check, X, Building, Save, Users, Settings2, Lock, ShieldCheck } from 'lucide-react';
 import { suggestMenu } from '../services/geminiService';
 
 interface MenuManagerProps {
@@ -33,7 +32,29 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
   const [editName, setEditName] = useState('');
   const [tempCompanyName, setTempCompanyName] = useState(companyName);
   const [newEmployeeName, setNewEmployeeName] = useState('');
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [passwordStatus, setPasswordStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
+  const handleChangePassword = async () => {
+    if (!newAdminPassword.trim()) return;
+    setPasswordStatus('loading');
+    try {
+      const res = await fetch('/marmitas/api.php?action=changeAdminPassword', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword: newAdminPassword })
+      });
+      if (res.ok) {
+        setPasswordStatus('success');
+        setNewAdminPassword('');
+        setTimeout(() => setPasswordStatus('idle'), 3000);
+      } else {
+        setPasswordStatus('error');
+      }
+    } catch (err) {
+      setPasswordStatus('error');
+    }
+  };
   const addEmployee = async () => {
     if (!newEmployeeName.trim()) return;
     const newEmp = { id: crypto.randomUUID(), name: newEmployeeName.trim() };
@@ -198,6 +219,34 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
           ))}
           {employees.length === 0 && <p className="col-span-full text-center text-gray-400 italic py-4 text-sm">Nenhum funcionário cadastrado.</p>}
         </div>
+      </div>
+
+      {/* Alterar Senha */}
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-800">
+          <Lock className="w-5 h-5 text-orange-500" /> Segurança do Painel
+        </h3>
+        <div className="flex gap-3">
+          <input
+            type="password"
+            value={newAdminPassword}
+            onChange={(e) => setNewAdminPassword(e.target.value)}
+            placeholder="Nova senha de administrador"
+            className="flex-1 p-3 border rounded-xl outline-none focus:ring-2 focus:ring-orange-500"
+          />
+          <button 
+            onClick={handleChangePassword} 
+            disabled={passwordStatus === 'loading'}
+            className={`px-6 rounded-xl font-bold flex items-center gap-2 transition-all ${
+              passwordStatus === 'success' ? 'bg-green-500 text-white' : 'bg-gray-800 text-white hover:bg-black'
+            }`}
+          >
+            {passwordStatus === 'loading' ? 'Salvando...' : 
+             passwordStatus === 'success' ? <><ShieldCheck className="w-4 h-4" /> Salva!</> : 
+             <><Save className="w-4 h-4" /> Alterar Senha</>}
+          </button>
+        </div>
+        {passwordStatus === 'error' && <p className="text-red-500 text-xs mt-2 font-bold">Erro ao alterar senha. Tente novamente.</p>}
       </div>
 
       {/* Adicionar Itens ao Cardápio */}
