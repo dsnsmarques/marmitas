@@ -29,32 +29,41 @@ const App: React.FC = () => {
         ]);
         
         if (menuRes.ok) {
-          const menuData = await menuRes.json();
-          if (Array.isArray(menuData)) {
-            setMenu(menuData.map((m: any) => ({
-              id: m.id,
-              name: m.name,
-              category: m.category,
-              isActive: m.isActive == "1" || m.isActive === true || m.isActive === 1
-            })));
+          const text = await menuRes.text();
+          if (text.trim().startsWith('{') || text.trim().startsWith('[')) {
+            const menuData = JSON.parse(text);
+            if (Array.isArray(menuData)) {
+              setMenu(menuData.map((m: any) => ({
+                id: m.id,
+                name: m.name,
+                category: m.category,
+                isActive: m.isActive == "1" || m.isActive === true || m.isActive === 1
+              })));
+            }
           }
         }
         
         if (ordersRes.ok) {
-          const ordersData = await ordersRes.json();
-          if (Array.isArray(ordersData)) {
-            setOrders(ordersData.map((o: any) => ({
-              id: o.id,
-              employeeName: o.employeeName,
-              selections: typeof o.selections === 'string' ? JSON.parse(o.selections) : o.selections,
-              timestamp: Number(o.timestamp)
-            })));
+          const text = await ordersRes.text();
+          if (text.trim().startsWith('{') || text.trim().startsWith('[')) {
+            const ordersData = JSON.parse(text);
+            if (Array.isArray(ordersData)) {
+              setOrders(ordersData.map((o: any) => ({
+                id: o.id,
+                employeeName: o.employeeName,
+                selections: typeof o.selections === 'string' ? JSON.parse(o.selections) : o.selections,
+                timestamp: Number(o.timestamp)
+              })));
+            }
           }
         }
 
         if (settingsRes.ok) {
-          const settings = await settingsRes.json();
-          if (settings.company_name) setCompanyName(settings.company_name);
+          const text = await settingsRes.text();
+          if (text.trim().startsWith('{')) {
+            const settings = JSON.parse(text);
+            if (settings.company_name) setCompanyName(settings.company_name);
+          }
         }
       } catch (err) {
         console.error("Erro ao carregar dados da API:", err);
@@ -112,9 +121,13 @@ const App: React.FC = () => {
     }
   };
 
-  const handleDeleteOrder = (id: string) => {
-    setOrders(prev => prev.filter(o => o.id !== id));
-    // O backend atual não tem delete individual, mas mantemos o estado sync
+  const handleDeleteOrder = async (id: string) => {
+    try {
+      setOrders(prev => prev.filter(o => o.id !== id));
+      // Backend does not have specific individual delete yet, but keeping UI in sync
+    } catch (err) {
+      console.error("Erro ao deletar pedido:", err);
+    }
   };
 
   const handleLogin = () => {
