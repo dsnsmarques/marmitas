@@ -30,12 +30,12 @@ const App: React.FC = () => {
         
         if (menuRes.ok) {
           const menuData = await menuRes.json();
-          if (Array.isArray(menuData) && menuData.length > 0) {
+          if (Array.isArray(menuData)) {
             setMenu(menuData.map((m: any) => ({
               id: m.id,
               name: m.name,
               category: m.category,
-              isActive: m.isActive == "1" || m.isActive === true
+              isActive: m.isActive == "1" || m.isActive === true || m.isActive === 1
             })));
           }
         }
@@ -61,7 +61,7 @@ const App: React.FC = () => {
       }
     };
     fetchData();
-  }, [activeTab]);
+  }, [activeTab, isLoggedIn]);
 
   const handleUpdateMenu = async (newMenu: MenuItem[]) => {
     setMenu(newMenu);

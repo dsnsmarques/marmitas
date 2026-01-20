@@ -66,7 +66,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ menu, onPlaceOrder, catego
     }
   };
 
-  const activeMenu = menu.filter(item => item.isActive);
+  const activeMenu = menu.filter(item => item.isActive == true || item.isActive == 1 || item.isActive == "1");
 
   return (
     <div className="max-w-2xl mx-auto bg-white p-6 sm:p-10 rounded-3xl shadow-xl border border-gray-100">

@@ -25,16 +25,20 @@ try {
 // Login
 if ($method == 'POST' && $action == 'login') {
     $data = json_decode(file_get_contents("php://input"), true);
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE username = 'admin' LIMIT 1");
-    $stmt->execute();
+    $username = $data['username'] ?? 'admin';
+    $password = $data['password'] ?? '';
+    
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ? LIMIT 1");
+    $stmt->execute([$username]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($user && password_verify($data['password'], $user['password'])) {
+    if ($user && password_verify($password, $user['password'])) {
         echo json_encode(["status" => "success"]);
     } else {
         http_response_code(401);
         echo json_encode(["error" => "Senha incorreta"]);
     }
+    exit;
 }
 
 // Atualizar Cardápio (Salvar item individual)
@@ -43,6 +47,7 @@ if ($method == 'POST' && $action == 'saveMenuItem') {
     $stmt = $pdo->prepare("INSERT INTO menu_items (id, name, category, isActive) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name), category = VALUES(category), isActive = VALUES(isActive)");
     $stmt->execute([$data['id'], $data['name'], $data['category'], $data['isActive'] ? 1 : 0]);
     echo json_encode(["status" => "success"]);
+    exit;
 }
 
 // Deletar Item do Cardápio
@@ -51,6 +56,7 @@ if ($method == 'DELETE' && $action == 'deleteMenuItem') {
     $stmt = $pdo->prepare("DELETE FROM menu_items WHERE id = ?");
     $stmt->execute([$id]);
     echo json_encode(["status" => "success"]);
+    exit;
 }
 
 // Salvar Configuração (Nome da Empresa)
@@ -59,12 +65,14 @@ if ($method == 'POST' && $action == 'saveSetting') {
     $stmt = $pdo->prepare("INSERT INTO settings (config_key, config_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE config_value = VALUES(config_value)");
     $stmt->execute([$data['key'], $data['value']]);
     echo json_encode(["status" => "success"]);
+    exit;
 }
 
 // Buscar Cardápio
 if ($method == 'GET' && $action == 'getMenu') {
-    $stmt = $pdo->query("SELECT * FROM menu_items WHERE isActive = TRUE");
+    $stmt = $pdo->query("SELECT * FROM menu_items");
     echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+    exit;
 }
 
 // Salvar Pedido
@@ -83,6 +91,7 @@ if ($method == 'POST' && $action == 'saveOrder') {
         $data['timestamp'] ?? (time() * 1000)
     ]);
     echo json_encode(["status" => "success"]);
+    exit;
 }
 
 // Buscar Pedidos
@@ -93,12 +102,14 @@ if ($method == 'GET' && $action == 'getOrders') {
         $o['selections'] = json_decode($o['selections'], true); 
     }
     echo json_encode($orders);
+    exit;
 }
 
 // Limpar Pedidos
 if ($method == 'DELETE' && $action == 'clearOrders') {
     $pdo->exec("DELETE FROM orders");
     echo json_encode(["status" => "success"]);
+    exit;
 }
 
 // Buscar Configurações
@@ -109,5 +120,6 @@ if ($method == 'GET' && $action == 'getSettings') {
         $settings[$row['config_key']] = $row['config_value'];
     }
     echo json_encode($settings);
+    exit;
 }
 ?>
