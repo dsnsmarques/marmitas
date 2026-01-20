@@ -1,10 +1,19 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Always use named parameters and avoid logical OR with empty string for apiKey.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Initialize Gemini AI only if API key is available
+const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+let ai: GoogleGenAI | null = null;
+
+if (apiKey) {
+  ai = new GoogleGenAI({ apiKey });
+}
 
 export const suggestMenu = async (currentItems: string[]) => {
+  if (!ai) {
+    console.warn("Gemini API key not configured. Menu suggestions are disabled.");
+    return [];
+  }
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
