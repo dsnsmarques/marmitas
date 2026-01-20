@@ -11,7 +11,7 @@ import { Utensils, ClipboardList, Settings, ChefHat, LogOut } from 'lucide-react
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(() => sessionStorage.getItem('marmita_logged_in') === 'true');
   const [companyName, setCompanyName] = useState('Marmita Express');
-  const [menu, setMenu] = useState<MenuItem[]>(INITIAL_MENU);
+  const [menu, setMenu] = useState<MenuItem[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [categoryConfigs, setCategoryConfigs] = useState<Record<Category, CategoryConfig>>(INITIAL_CONFIGS);
   const [orders, setOrders] = useState<Order[]>([]);
