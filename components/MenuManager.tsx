@@ -79,6 +79,11 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
     }
   };
 
+  const startEdit = (item: MenuItem) => {
+    setEditingId(item.id);
+    setEditName(item.name);
+  };
+
   const saveEdit = async () => {
     if (!editingId) return;
     const updatedMenu = menu.map(item => item.id === editingId ? { ...item, name: editName } : item);
@@ -118,6 +123,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
   };
 
   const deleteItem = async (id: string) => {
+    if (!confirm('Deseja excluir este item permanentemente?')) return;
     onUpdateMenu(menu.filter(item => item.id !== id));
     try {
       await fetch(`/marmitas/api.php?action=deleteMenuItem&id=${id}`, {

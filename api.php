@@ -44,8 +44,13 @@ if ($method == 'POST' && $action == 'login') {
 // Atualizar Cardápio (Salvar item individual)
 if ($method == 'POST' && $action == 'saveMenuItem') {
     $data = json_decode(file_get_contents("php://input"), true);
+    if (!$data) {
+        http_response_code(400);
+        echo json_encode(["error" => "Dados inválidos"]);
+        exit;
+    }
     $stmt = $pdo->prepare("INSERT INTO menu_items (id, name, category, isActive) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name), category = VALUES(category), isActive = VALUES(isActive)");
-    $isActive = ($data['isActive'] === true || $data['isActive'] == 1 || $data['isActive'] == "1") ? 1 : 0;
+    $isActive = (isset($data['isActive']) && ($data['isActive'] === true || $data['isActive'] == 1 || $data['isActive'] == "1")) ? 1 : 0;
     $stmt->execute([$data['id'], $data['name'], $data['category'], $isActive]);
     echo json_encode(["status" => "success"]);
     exit;
@@ -54,6 +59,11 @@ if ($method == 'POST' && $action == 'saveMenuItem') {
 // Salvar Funcionário
 if ($method == 'POST' && $action == 'saveEmployee') {
     $data = json_decode(file_get_contents("php://input"), true);
+    if (!$data) {
+        http_response_code(400);
+        echo json_encode(["error" => "Dados inválidos"]);
+        exit;
+    }
     $stmt = $pdo->prepare("INSERT INTO employees (id, name) VALUES (?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name)");
     $stmt->execute([$data['id'], $data['name']]);
     echo json_encode(["status" => "success"]);
@@ -88,20 +98,21 @@ if ($method == 'DELETE' && $action == 'deleteMenuItem') {
 // Salvar Configuração (Nome da Empresa)
 if ($method == 'POST' && $action == 'saveSetting') {
     $data = json_decode(file_get_contents("php://input"), true);
+    if (!$data || !isset($data['key']) || !isset($data['value'])) {
+        http_response_code(400);
+        echo json_encode(["error" => "Dados inválidos"]);
+        exit;
+    }
     $stmt = $pdo->prepare("INSERT INTO settings (config_key, config_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE config_value = VALUES(config_value)");
     $stmt->execute([$data['key'], $data['value']]);
     echo json_encode(["status" => "success"]);
     exit;
 }
 
-$method = $_SERVER['REQUEST_METHOD'];
-$action = $_GET['action'] ?? '';
-
 // Buscar Cardápio
 if ($method == 'GET' && $action == 'getMenu') {
     $stmt = $pdo->query("SELECT * FROM menu_items");
     $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    // Garantir que isActive seja booleano
     foreach ($items as &$item) {
         $item['isActive'] = (bool)$item['isActive'];
     }
