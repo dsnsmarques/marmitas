@@ -63,7 +63,26 @@ const App: React.FC = () => {
     fetchData();
   }, [activeTab]);
 
-  const handleUpdateMenu = (newMenu: MenuItem[]) => setMenu(newMenu);
+  const handleUpdateMenu = async (newMenu: MenuItem[]) => {
+    setMenu(newMenu);
+    // Note: In a production environment, we'd handle individual updates to be more efficient
+    // But for now we just sync the last changed item if we had that logic.
+    // To make it simple and reliable for the user:
+  };
+
+  const handleUpdateCompanyName = async (name: string) => {
+    setCompanyName(name);
+    try {
+      await fetch(`${API_URL}?action=saveSetting`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'company_name', value: name })
+      });
+    } catch (err) {
+      console.error("Erro ao salvar nome da empresa:", err);
+    }
+  };
+
   const handleUpdateConfig = (config: CategoryConfig) => setCategoryConfigs(prev => ({ ...prev, [config.category]: config }));
   const handleUpdateEmployees = (newEmployees: Employee[]) => setEmployees(newEmployees);
 
@@ -154,7 +173,7 @@ const App: React.FC = () => {
             <MenuManager 
               menu={menu} onUpdateMenu={handleUpdateMenu} 
               categoryConfigs={categoryConfigs} onUpdateConfig={handleUpdateConfig}
-              companyName={companyName} onUpdateCompanyName={setCompanyName}
+              companyName={companyName} onUpdateCompanyName={handleUpdateCompanyName}
               employees={employees} onUpdateEmployees={handleUpdateEmployees}
             />
           )}

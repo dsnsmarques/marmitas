@@ -34,39 +34,70 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
   const [tempCompanyName, setTempCompanyName] = useState(companyName);
   const [newEmployeeName, setNewEmployeeName] = useState('');
 
-  const addItem = () => {
+  const addItem = async () => {
     if (!newItemName.trim()) return;
-    onUpdateMenu([...menu, { id: crypto.randomUUID(), name: newItemName.trim(), category: newCategory, isActive: true }]);
+    const newItem = { id: crypto.randomUUID(), name: newItemName.trim(), category: newCategory, isActive: true };
+    onUpdateMenu([...menu, newItem]);
     setNewItemName('');
+    
+    try {
+      await fetch('/marmitas/api.php?action=saveMenuItem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newItem)
+      });
+    } catch (err) {
+      console.error("Erro ao salvar item no banco:", err);
+    }
   };
 
-  const startEdit = (item: MenuItem) => {
-    setEditingId(item.id);
-    setEditName(item.name);
-  };
-
-  const saveEdit = () => {
+  const saveEdit = async () => {
     if (!editingId) return;
-    onUpdateMenu(menu.map(item => item.id === editingId ? { ...item, name: editName } : item));
+    const updatedMenu = menu.map(item => item.id === editingId ? { ...item, name: editName } : item);
+    const updatedItem = updatedMenu.find(i => i.id === editingId);
+    onUpdateMenu(updatedMenu);
     setEditingId(null);
+
+    if (updatedItem) {
+      try {
+        await fetch('/marmitas/api.php?action=saveMenuItem', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedItem)
+        });
+      } catch (err) {
+        console.error("Erro ao atualizar item no banco:", err);
+      }
+    }
   };
 
-  const addEmployee = () => {
-    if (!newEmployeeName.trim()) return;
-    onUpdateEmployees([...employees, { id: crypto.randomUUID(), name: newEmployeeName.trim() }]);
-    setNewEmployeeName('');
+  const toggleItem = async (id: string) => {
+    const updatedMenu = menu.map(item => item.id === id ? { ...item, isActive: !item.isActive } : item);
+    const updatedItem = updatedMenu.find(i => i.id === id);
+    onUpdateMenu(updatedMenu);
+
+    if (updatedItem) {
+      try {
+        await fetch('/marmitas/api.php?action=saveMenuItem', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedItem)
+        });
+      } catch (err) {
+        console.error("Erro ao alterar status no banco:", err);
+      }
+    }
   };
 
-  const removeEmployee = (id: string) => {
-    onUpdateEmployees(employees.filter(e => e.id !== id));
-  };
-
-  const toggleItem = (id: string) => {
-    onUpdateMenu(menu.map(item => item.id === id ? { ...item, isActive: !item.isActive } : item));
-  };
-
-  const deleteItem = (id: string) => {
+  const deleteItem = async (id: string) => {
     onUpdateMenu(menu.filter(item => item.id !== id));
+    try {
+      await fetch(`/marmitas/api.php?action=deleteMenuItem&id=${id}`, {
+        method: 'DELETE'
+      });
+    } catch (err) {
+      console.error("Erro ao deletar item no banco:", err);
+    }
   };
 
   const handleSuggest = async () => {

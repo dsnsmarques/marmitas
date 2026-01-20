@@ -37,6 +37,30 @@ if ($method == 'POST' && $action == 'login') {
     }
 }
 
+// Atualizar Cardápio (Salvar item individual)
+if ($method == 'POST' && $action == 'saveMenuItem') {
+    $data = json_decode(file_get_contents("php://input"), true);
+    $stmt = $pdo->prepare("INSERT INTO menu_items (id, name, category, isActive) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name), category = VALUES(category), isActive = VALUES(isActive)");
+    $stmt->execute([$data['id'], $data['name'], $data['category'], $data['isActive'] ? 1 : 0]);
+    echo json_encode(["status" => "success"]);
+}
+
+// Deletar Item do Cardápio
+if ($method == 'DELETE' && $action == 'deleteMenuItem') {
+    $id = $_GET['id'] ?? '';
+    $stmt = $pdo->prepare("DELETE FROM menu_items WHERE id = ?");
+    $stmt->execute([$id]);
+    echo json_encode(["status" => "success"]);
+}
+
+// Salvar Configuração (Nome da Empresa)
+if ($method == 'POST' && $action == 'saveSetting') {
+    $data = json_decode(file_get_contents("php://input"), true);
+    $stmt = $pdo->prepare("INSERT INTO settings (config_key, config_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE config_value = VALUES(config_value)");
+    $stmt->execute([$data['key'], $data['value']]);
+    echo json_encode(["status" => "success"]);
+}
+
 // Buscar Cardápio
 if ($method == 'GET' && $action == 'getMenu') {
     $stmt = $pdo->query("SELECT * FROM menu_items WHERE isActive = TRUE");
