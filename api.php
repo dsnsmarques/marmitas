@@ -8,7 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     exit;
 }
 
-$host = "u567446487_marmitas.mysql.hostinger.com.br";
+$host = "localhost";
 $db = "u567446487_marmitas";
 $user = "u567446487_marmitas";
 $pass = "@@d0ugl4ss3nh4MASTER";
