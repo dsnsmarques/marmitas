@@ -23,31 +23,66 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('marmita_configs');
     return saved ? JSON.parse(saved) : INITIAL_CONFIGS;
   });
-  const [orders, setOrders] = useState<Order[]>(() => {
-    const saved = localStorage.getItem('marmita_orders');
-    const today = new Date().toDateString();
-    if (localStorage.getItem('marmita_last_date') !== today) {
-      localStorage.setItem('marmita_last_date', today);
-      return [];
-    }
-    return saved ? JSON.parse(saved) : [];
-  });
-
+  const [orders, setOrders] = useState<Order[]>([]);
   const [activeTab, setActiveTab] = useState<'order' | 'report' | 'admin'>('order');
 
-  useEffect(() => localStorage.setItem('marmita_menu', JSON.stringify(menu)), [menu]);
-  useEffect(() => localStorage.setItem('marmita_configs', JSON.stringify(categoryConfigs)), [categoryConfigs]);
-  useEffect(() => localStorage.setItem('marmita_orders', JSON.stringify(orders)), [orders]);
-  useEffect(() => localStorage.setItem('marmita_company_name', companyName), [companyName]);
-  useEffect(() => localStorage.setItem('marmita_employees', JSON.stringify(employees)), [employees]);
+  const API_URL = '/marmitas/api.php';
 
-  const handleUpdateMenu = (newMenu: MenuItem[]) => setMenu(newMenu);
-  const handleUpdateConfig = (config: CategoryConfig) => setCategoryConfigs(prev => ({ ...prev, [config.category]: config }));
-  const handlePlaceOrder = (order: Order) => setOrders(prev => [...prev, order]);
-  const handleDeleteOrder = (id: string) => setOrders(prev => prev.filter(o => o.id !== id));
-  const handleClearOrders = () => {
-    setOrders([]);
-    localStorage.removeItem('marmita_orders');
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [menuRes, ordersRes, settingsRes] = await Promise.all([
+          fetch(`${API_URL}?action=getMenu`),
+          fetch(`${API_URL}?action=getOrders`),
+          fetch(`${API_URL}?action=getSettings`)
+        ]);
+        
+        if (menuRes.ok) {
+          const menuData = await menuRes.json();
+          if (menuData.length > 0) setMenu(menuData);
+        }
+        
+        if (ordersRes.ok) {
+          const ordersData = await ordersRes.json();
+          setOrders(ordersData.map((o: any) => ({
+            id: o.id,
+            employeeName: o.employeeName,
+            selections: o.selections,
+            timestamp: Number(o.timestamp)
+          })));
+        }
+
+        if (settingsRes.ok) {
+          const settings = await settingsRes.json();
+          if (settings.company_name) setCompanyName(settings.company_name);
+        }
+      } catch (err) {
+        console.error("Erro ao carregar dados da API:", err);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const handlePlaceOrder = async (order: Order) => {
+    try {
+      setOrders(prev => [order, ...prev]);
+      await fetch(`${API_URL}?action=saveOrder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(order)
+      });
+    } catch (err) {
+      console.error("Erro ao salvar pedido:", err);
+    }
+  };
+
+  const handleClearOrders = async () => {
+    try {
+      setOrders([]);
+      await fetch(`${API_URL}?action=clearOrders`, { method: 'DELETE' });
+    } catch (err) {
+      console.error("Erro ao limpar pedidos:", err);
+    }
   };
 
   const handleLogin = () => {
