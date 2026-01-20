@@ -11,13 +11,25 @@ export const Login: React.FC<LoginProps> = ({ onLogin, companyName }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simple demo password - in a real PHP environment this would be a server-side check
-    if (password === 'admin123' || password === 'marmita') {
-      onLogin();
-    } else {
-      setError('Senha incorreta. Tente "admin123" ou "marmita".');
+    setError('');
+
+    try {
+      const response = await fetch('/marmitas/api.php?action=login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: 'admin', password })
+      });
+
+      if (response.ok) {
+        onLogin();
+      } else {
+        const data = await response.json();
+        setError(data.error || 'Senha incorreta');
+      }
+    } catch (err) {
+      setError('Erro de conexão com o servidor');
     }
   };
 
