@@ -94,10 +94,18 @@ if ($method == 'POST' && $action == 'saveSetting') {
     exit;
 }
 
+$method = $_SERVER['REQUEST_METHOD'];
+$action = $_GET['action'] ?? '';
+
 // Buscar Cardápio
 if ($method == 'GET' && $action == 'getMenu') {
     $stmt = $pdo->query("SELECT * FROM menu_items");
-    echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+    $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Garantir que isActive seja booleano
+    foreach ($items as &$item) {
+        $item['isActive'] = (bool)$item['isActive'];
+    }
+    echo json_encode($items);
     exit;
 }
 
