@@ -1,0 +1,93 @@
+Guia para criar o Banco de Dados e Conectar (PHP + MySQL)
+Para transformar este aplicativo em um sistema com persistência em banco de dados real, siga estes passos:
+1. Criar o Banco de Dados (MySQL)
+No seu painel (como o phpMyAdmin), execute o seguinte comando SQL:
+code
+SQL
+CREATE DATABASE marmita_express;
+USE marmita_express;
+
+-- Tabela para o cardápio
+CREATE TABLE menu_items (
+    id VARCHAR(50) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    category ENUM('Principal', 'Mistura', 'Guarnição', 'Salada') NOT NULL,
+    isActive BOOLEAN DEFAULT TRUE
+);
+
+-- Tabela para os pedidos
+CREATE TABLE orders (
+    id VARCHAR(50) PRIMARY KEY,
+    employeeName VARCHAR(255) NOT NULL,
+    selections JSON NOT NULL, -- Salva as categorias e itens escolhidos
+    timestamp BIGINT NOT NULL
+);
+
+-- Tabela para configurações gerais
+CREATE TABLE settings (
+    config_key VARCHAR(50) PRIMARY KEY,
+    config_value TEXT
+);
+
+INSERT INTO settings (config_key, config_value) VALUES ('company_name', 'Marmita Express');
+2. Criar a API em PHP
+Crie um arquivo chamado api.php no seu servidor. Ele servirá como ponte entre o React e o MySQL.
+code
+PHP
+<?php
+header("Access-Control-Allow-Origin: *");
+header("Content-Type: application/json; charset=UTF-8");
+header("Access-Control-Allow-Methods: POST, GET, DELETE");
+
+$host = "localhost";
+$db = "marmita_express";
+$user = "seu_usuario";
+$pass = "sua_senha";
+
+try {
+    $pdo = new PDO("mysql:host=$host;dbname=$db", $user, $pass);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException $e) {
+    die("Erro na conexão: " . $e->getMessage());
+}
+
+$method = $_SERVER['REQUEST_METHOD'];
+$action = $_GET['action'] ?? '';
+
+// Exemplo: Salvar Pedido
+if ($method == 'POST' && $action == 'saveOrder') {
+    $data = json_decode(file_get_contents("php://input"), true);
+    $stmt = $pdo->prepare("INSERT INTO orders (id, employeeName, selections, timestamp) VALUES (?, ?, ?, ?)");
+    $stmt->execute([$data['id'], $data['employeeName'], json_encode($data['selections']), $data['timestamp']]);
+    echo json_encode(["status" => "success"]);
+}
+
+// Exemplo: Buscar Pedidos do Dia
+if ($method == 'GET' && $action == 'getOrders') {
+    $stmt = $pdo->query("SELECT * FROM orders");
+    $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($orders as &$o) { $o['selections'] = json_decode($o['selections']); }
+    echo json_encode($orders);
+}
+
+// Exemplo: Limpar Pedidos
+if ($method == 'DELETE' && $action == 'clearOrders') {
+    $pdo->exec("DELETE FROM orders");
+    echo json_encode(["status" => "success"]);
+}
+?>
+3. Conectar o Frontend
+No arquivo App.tsx, você deve substituir as chamadas de localStorage por chamadas fetch.
+Exemplo de mudança no handlePlaceOrder:
+code
+JavaScript
+const handlePlaceOrder = async (order: Order) => {
+    // Localmente
+    setOrders(prev => [...prev, order]);
+    
+    // No servidor
+    await fetch('https://seu-site.com/api.php?action=saveOrder', {
+        method: 'POST',
+        body: JSON.stringify(order)
+    });
+};
