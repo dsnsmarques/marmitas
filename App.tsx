@@ -10,19 +10,10 @@ import { Utensils, ClipboardList, Settings, ChefHat, LogOut } from 'lucide-react
 
 const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(() => sessionStorage.getItem('marmita_logged_in') === 'true');
-  const [companyName, setCompanyName] = useState(() => localStorage.getItem('marmita_company_name') || 'Marmita Express');
-  const [menu, setMenu] = useState<MenuItem[]>(() => {
-    const saved = localStorage.getItem('marmita_menu');
-    return saved ? JSON.parse(saved) : INITIAL_MENU;
-  });
-  const [employees, setEmployees] = useState<Employee[]>(() => {
-    const saved = localStorage.getItem('marmita_employees');
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [categoryConfigs, setCategoryConfigs] = useState<Record<Category, CategoryConfig>>(() => {
-    const saved = localStorage.getItem('marmita_configs');
-    return saved ? JSON.parse(saved) : INITIAL_CONFIGS;
-  });
+  const [companyName, setCompanyName] = useState('Marmita Express');
+  const [menu, setMenu] = useState<MenuItem[]>(INITIAL_MENU);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [categoryConfigs, setCategoryConfigs] = useState<Record<Category, CategoryConfig>>(INITIAL_CONFIGS);
   const [orders, setOrders] = useState<Order[]>([]);
   const [activeTab, setActiveTab] = useState<'order' | 'report' | 'admin'>('order');
 
@@ -39,17 +30,26 @@ const App: React.FC = () => {
         
         if (menuRes.ok) {
           const menuData = await menuRes.json();
-          if (menuData.length > 0) setMenu(menuData);
+          if (Array.isArray(menuData) && menuData.length > 0) {
+            setMenu(menuData.map((m: any) => ({
+              id: m.id,
+              name: m.name,
+              category: m.category,
+              isActive: m.isActive == "1" || m.isActive === true
+            })));
+          }
         }
         
         if (ordersRes.ok) {
           const ordersData = await ordersRes.json();
-          setOrders(ordersData.map((o: any) => ({
-            id: o.id,
-            employeeName: o.employeeName,
-            selections: o.selections,
-            timestamp: Number(o.timestamp)
-          })));
+          if (Array.isArray(ordersData)) {
+            setOrders(ordersData.map((o: any) => ({
+              id: o.id,
+              employeeName: o.employeeName,
+              selections: typeof o.selections === 'string' ? JSON.parse(o.selections) : o.selections,
+              timestamp: Number(o.timestamp)
+            })));
+          }
         }
 
         if (settingsRes.ok) {
@@ -61,7 +61,11 @@ const App: React.FC = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [activeTab]);
+
+  const handleUpdateMenu = (newMenu: MenuItem[]) => setMenu(newMenu);
+  const handleUpdateConfig = (config: CategoryConfig) => setCategoryConfigs(prev => ({ ...prev, [config.category]: config }));
+  const handleUpdateEmployees = (newEmployees: Employee[]) => setEmployees(newEmployees);
 
   const handlePlaceOrder = async (order: Order) => {
     try {
@@ -78,11 +82,18 @@ const App: React.FC = () => {
 
   const handleClearOrders = async () => {
     try {
-      setOrders([]);
-      await fetch(`${API_URL}?action=clearOrders`, { method: 'DELETE' });
+      if (confirm('Deseja limpar todos os pedidos?')) {
+        setOrders([]);
+        await fetch(`${API_URL}?action=clearOrders`, { method: 'DELETE' });
+      }
     } catch (err) {
       console.error("Erro ao limpar pedidos:", err);
     }
+  };
+
+  const handleDeleteOrder = (id: string) => {
+    setOrders(prev => prev.filter(o => o.id !== id));
+    // O backend atual não tem delete individual, mas mantemos o estado sync
   };
 
   const handleLogin = () => {
@@ -144,7 +155,7 @@ const App: React.FC = () => {
               menu={menu} onUpdateMenu={handleUpdateMenu} 
               categoryConfigs={categoryConfigs} onUpdateConfig={handleUpdateConfig}
               companyName={companyName} onUpdateCompanyName={setCompanyName}
-              employees={employees} onUpdateEmployees={setEmployees}
+              employees={employees} onUpdateEmployees={handleUpdateEmployees}
             />
           )}
         </main>
