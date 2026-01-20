@@ -6,6 +6,11 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
       base: '/marmitas/',
+      build: {
+        outDir: 'dist',
+        assetsDir: 'assets',
+        emptyOutDir: true
+      },
       server: {
         port: 5000,
         host: '0.0.0.0',
