@@ -22,10 +22,11 @@ export const Login: React.FC<LoginProps> = ({ onLogin, companyName }) => {
         body: JSON.stringify({ username: 'admin', password })
       });
 
-      if (response.ok) {
+      const data = await response.json();
+
+      if (response.status === 200 && data.status === 'success') {
         onLogin();
       } else {
-        const data = await response.json();
         setError(data.error || 'Senha incorreta');
       }
     } catch (err) {

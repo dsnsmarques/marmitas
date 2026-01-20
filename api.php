@@ -35,7 +35,7 @@ if ($method == 'POST' && $action == 'login') {
     if ($user && password_verify($password, $user['password'])) {
         echo json_encode(["status" => "success"]);
     } else {
-        http_response_code(401);
+        header('HTTP/1.1 401 Unauthorized');
         echo json_encode(["error" => "Senha incorreta"]);
     }
     exit;

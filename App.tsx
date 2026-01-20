@@ -60,7 +60,9 @@ const App: React.FC = () => {
         console.error("Erro ao carregar dados da API:", err);
       }
     };
-    fetchData();
+    if (isLoggedIn || activeTab === 'order') {
+      fetchData();
+    }
   }, [activeTab, isLoggedIn]);
 
   const handleUpdateMenu = async (newMenu: MenuItem[]) => {
