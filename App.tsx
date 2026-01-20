@@ -64,6 +64,25 @@ const App: React.FC = () => {
           if (text.trim().startsWith('{')) {
             const settings = JSON.parse(text);
             if (settings.company_name) setCompanyName(settings.company_name);
+            
+            // Carregar configurações de categoria do banco
+            const newConfigs = { ...INITIAL_CONFIGS };
+            Object.keys(settings).forEach(key => {
+              if (key.startsWith('category_config_')) {
+                const category = key.replace('category_config_', '') as Category;
+                try {
+                  const config = JSON.parse(settings[key]);
+                  newConfigs[category] = {
+                    category,
+                    maxSelections: config.maxSelections,
+                    isRequired: config.isRequired
+                  };
+                } catch (e) {
+                  console.error("Erro ao parsear config de categoria:", e);
+                }
+              }
+            });
+            setCategoryConfigs(newConfigs);
           }
         }
 
@@ -102,7 +121,18 @@ const App: React.FC = () => {
     }
   };
 
-  const handleUpdateConfig = (config: CategoryConfig) => setCategoryConfigs(prev => ({ ...prev, [config.category]: config }));
+  const handleUpdateConfig = async (config: CategoryConfig) => {
+    setCategoryConfigs(prev => ({ ...prev, [config.category]: config }));
+    try {
+      await fetch(`${API_URL}?action=saveCategoryConfig`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+      });
+    } catch (err) {
+      console.error("Erro ao salvar configuração de categoria:", err);
+    }
+  };
   
   const handleUpdateEmployees = async (newEmployees: Employee[]) => {
     // Determine if it was an add or remove by comparing lengths
