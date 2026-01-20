@@ -34,6 +34,16 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
   const [tempCompanyName, setTempCompanyName] = useState(companyName);
   const [newEmployeeName, setNewEmployeeName] = useState('');
 
+  const addEmployee = () => {
+    if (!newEmployeeName.trim()) return;
+    onUpdateEmployees([...employees, { id: crypto.randomUUID(), name: newEmployeeName.trim() }]);
+    setNewEmployeeName('');
+  };
+
+  const removeEmployee = (id: string) => {
+    onUpdateEmployees(employees.filter(e => e.id !== id));
+  };
+
   const addItem = async () => {
     if (!newItemName.trim()) return;
     const newItem = { id: crypto.randomUUID(), name: newItemName.trim(), category: newCategory, isActive: true };
