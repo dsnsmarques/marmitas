@@ -31,10 +31,11 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onClearOrders, onD
         // Category title (• Principal:)
         text += `• ${cat}:\n`;
         
-        const selections = order.selections[cat as Category];
-        if (selections && selections.length > 0) {
+        const selections = typeof order.selections === 'string' ? JSON.parse(order.selections) : order.selections;
+        const catSelections = selections[cat as Category];
+        if (catSelections && Array.isArray(catSelections) && catSelections.length > 0) {
           // List each item on a new line
-          selections.forEach(item => {
+          catSelections.forEach(item => {
             text += `${item}\n`;
           });
         } else {
