@@ -1,8 +1,7 @@
 
 import React from 'react';
-import { Order, Category } from '../types';
+import { Order, Category, CATEGORIES } from '../types';
 import { Share2, Trash2, ClipboardCheck, FileSpreadsheet, Download, Utensils } from 'lucide-react';
-import { CATEGORIES } from '../constants';
 import * as XLSX from 'https://esm.sh/xlsx';
 
 interface OrderListProps {
@@ -22,28 +21,19 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onClearOrders, onD
     text += `--------------------------------\n\n`;
 
     ordersList.forEach((order, index) => {
-      // Name header (2. COUTINHO)
-      text += isWhatsApp 
-        ? `*${index + 1}. ${order.employeeName.toUpperCase()}*\n` 
-        : `${index + 1}. ${order.employeeName.toUpperCase()}\n`;
-
+      text += `*${order.employeeName}*\n\n`;
+      
+      const selections = typeof order.selections === 'string' ? JSON.parse(order.selections) : order.selections;
+      
       CATEGORIES.forEach(cat => {
-        // Category title (• Principal:)
-        text += `• ${cat}:\n`;
-        
-        const selections = typeof order.selections === 'string' ? JSON.parse(order.selections) : order.selections;
         const catSelections = selections[cat as Category];
         if (catSelections && Array.isArray(catSelections) && catSelections.length > 0) {
-          // List each item on a new line
           catSelections.forEach(item => {
             text += `${item}\n`;
           });
-        } else {
-          // If empty
-          text += `Nenhuma opção escolhida\n`;
         }
       });
-      text += `\n`; // Add extra space between employees
+      text += `\n`; 
     });
 
     text += `--------------------------------\n`;
