@@ -70,6 +70,25 @@ if ($action == 'getSettings') {
     exit;
 }
 
+// Salvar Configuração de Categoria (Máx Seleções e Obrigatório)
+if ($method == 'POST' && $action == 'saveCategoryConfig') {
+    $data = json_decode(file_get_contents("php://input"), true);
+    if (!$data || !isset($data['category'])) {
+        http_response_code(400);
+        echo json_encode(["error" => "Dados inválidos"]);
+        exit;
+    }
+    $key = "category_config_" . $data['category'];
+    $value = json_encode([
+        "maxSelections" => $data['maxSelections'],
+        "isRequired" => $data['isRequired']
+    ]);
+    $stmt = $pdo->prepare("INSERT INTO settings (config_key, config_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE config_value = VALUES(config_value)");
+    $stmt->execute([$key, $value]);
+    echo json_encode(["status" => "success"]);
+    exit;
+}
+
 // Login
 if ($method == 'POST' && $action == 'login') {
     $data = json_decode(file_get_contents("php://input"), true);
