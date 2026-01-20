@@ -37,3 +37,11 @@ externalPort = 80
 deploymentTarget = "static"
 build = ["npm", "run", "build"]
 publicDir = "dist"
+
+[userenv]
+
+[userenv.shared]
+DB_HOST = "u567446487_marmitas.mysql.hostinger.com.br"
+DB_DATABASE = "u567446487_marmitas"
+DB_USER = "u567446487_marmitas"
+DB_PASSWORD = "@@d0ugl4ss3nh4MASTER"
