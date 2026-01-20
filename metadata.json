@@ -1,0 +1,5 @@
+{
+  "name": "Marmita Express - Gestão de Pedidos",
+  "description": "Um aplicativo completo para gerenciar o cardápio diário de marmitas de uma empresa e consolidar pedidos para envio via WhatsApp.",
+  "requestFramePermissions": []
+}

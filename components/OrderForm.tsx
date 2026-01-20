@@ -1,0 +1,149 @@
+
+import React, { useState } from 'react';
+import { MenuItem, Selection, Order, CategoryConfig, Category, Employee } from '../types';
+import { CATEGORIES } from '../constants';
+import { CheckCircle, AlertCircle, Info, User } from 'lucide-react';
+
+interface OrderFormProps {
+  menu: MenuItem[];
+  onPlaceOrder: (order: Order) => void;
+  categoryConfigs: Record<Category, CategoryConfig>;
+  companyName: string;
+  employees: Employee[];
+}
+
+export const OrderForm: React.FC<OrderFormProps> = ({ menu, onPlaceOrder, categoryConfigs, companyName, employees }) => {
+  const [employeeName, setEmployeeName] = useState('');
+  const [selections, setSelections] = useState<Selection>({
+    Principal: [], Mistura: [], Guarnição: [], Salada: [],
+  });
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+
+    if (!employeeName) {
+      setError('Por favor, selecione seu nome na lista.');
+      return;
+    }
+
+    for (const cat of CATEGORIES) {
+      const config = categoryConfigs[cat];
+      if (config.isRequired && selections[cat].length === 0) {
+        setError(`A categoria ${cat} é obrigatória.`);
+        return;
+      }
+    }
+
+    onPlaceOrder({
+      id: crypto.randomUUID(),
+      employeeName,
+      selections,
+      timestamp: Date.now(),
+    });
+
+    setSuccess(true);
+    setEmployeeName('');
+    setSelections({ Principal: [], Mistura: [], Guarnição: [], Salada: [] });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => setSuccess(false), 4000);
+  };
+
+  const handleSelect = (category: Category, itemName: string) => {
+    const config = categoryConfigs[category];
+    const current = selections[category];
+    
+    if (current.includes(itemName)) {
+      setSelections(prev => ({ ...prev, [category]: prev[category].filter(i => i !== itemName) }));
+    } else {
+      if (config.maxSelections === 1) {
+        setSelections(prev => ({ ...prev, [category]: [itemName] }));
+      } else if (current.length < config.maxSelections) {
+        setSelections(prev => ({ ...prev, [category]: [...prev[category], itemName] }));
+      }
+    }
+  };
+
+  const activeMenu = menu.filter(item => item.isActive);
+
+  return (
+    <div className="max-w-2xl mx-auto bg-white p-6 sm:p-10 rounded-3xl shadow-xl border border-gray-100">
+      <div className="mb-8 text-center">
+        <h2 className="text-3xl font-black text-gray-900 mb-2 uppercase tracking-tight">{companyName}</h2>
+        <p className="text-gray-500 font-medium">Monte sua marmita de hoje</p>
+      </div>
+      
+      {success && (
+        <div className="mb-6 p-4 bg-green-50 border border-green-100 text-green-700 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top duration-500">
+          <CheckCircle className="w-6 h-6" /> 
+          <p className="font-bold text-sm">Pedido registrado com sucesso!</p>
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-100 text-red-700 rounded-2xl flex items-center gap-3 animate-pulse">
+          <AlertCircle className="w-6 h-6" /> <span className="text-sm font-bold">{error}</span>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-8">
+        <div className="bg-orange-50/50 p-6 rounded-2xl border border-orange-100">
+          <label className="flex items-center gap-2 text-xs font-black text-orange-600 mb-3 uppercase tracking-widest">
+            <User className="w-4 h-4" /> Selecione seu Nome
+          </label>
+          <select
+            value={employeeName}
+            onChange={(e) => setEmployeeName(e.target.value)}
+            className="w-full p-4 border-2 border-white bg-white rounded-xl focus:border-orange-500 focus:ring-0 outline-none text-lg font-bold text-gray-700 shadow-sm transition-all"
+          >
+            <option value="">Clique para escolher...</option>
+            {employees.sort((a, b) => a.name.localeCompare(b.name)).map(emp => (
+              <option key={emp.id} value={emp.name}>{emp.name}</option>
+            ))}
+          </select>
+          {employees.length === 0 && (
+            <p className="text-[10px] text-orange-400 mt-2 italic font-medium">Nenhum funcionário cadastrado no sistema.</p>
+          )}
+        </div>
+
+        {CATEGORIES.map(category => (
+          <div key={category} className="space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-50 pb-2">
+              <h3 className="text-lg font-extrabold text-gray-800 uppercase tracking-tighter">{category}</h3>
+              <span className="text-[10px] font-black text-gray-300 uppercase">Máx: {categoryConfigs[category].maxSelections}</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {activeMenu.filter(item => item.category === category).map(item => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => handleSelect(category, item.name)}
+                  className={`p-4 text-left border-2 rounded-2xl transition-all relative ${
+                    selections[category].includes(item.name)
+                      ? 'border-orange-500 bg-orange-50 text-orange-700 shadow-lg shadow-orange-100'
+                      : 'border-gray-50 bg-white text-gray-500 hover:border-orange-200'
+                  }`}
+                >
+                  <span className="font-bold text-sm">{item.name}</span>
+                  {selections[category].includes(item.name) && (
+                    <CheckCircle className="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 text-orange-500" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        <button
+          type="submit"
+          disabled={employees.length === 0}
+          className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-gray-200 text-white p-5 rounded-2xl font-black text-xl transition-all transform active:scale-95 shadow-xl shadow-orange-100"
+        >
+          ENVIAR PEDIDO
+        </button>
+      </form>
+    </div>
+  );
+};
