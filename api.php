@@ -45,8 +45,34 @@ if ($method == 'POST' && $action == 'login') {
 if ($method == 'POST' && $action == 'saveMenuItem') {
     $data = json_decode(file_get_contents("php://input"), true);
     $stmt = $pdo->prepare("INSERT INTO menu_items (id, name, category, isActive) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name), category = VALUES(category), isActive = VALUES(isActive)");
-    $stmt->execute([$data['id'], $data['name'], $data['category'], $data['isActive'] ? 1 : 0]);
+    $isActive = ($data['isActive'] === true || $data['isActive'] == 1 || $data['isActive'] == "1") ? 1 : 0;
+    $stmt->execute([$data['id'], $data['name'], $data['category'], $isActive]);
     echo json_encode(["status" => "success"]);
+    exit;
+}
+
+// Salvar Funcionário
+if ($method == 'POST' && $action == 'saveEmployee') {
+    $data = json_decode(file_get_contents("php://input"), true);
+    $stmt = $pdo->prepare("INSERT INTO employees (id, name) VALUES (?, ?) ON DUPLICATE KEY UPDATE name = VALUES(name)");
+    $stmt->execute([$data['id'], $data['name']]);
+    echo json_encode(["status" => "success"]);
+    exit;
+}
+
+// Deletar Funcionário
+if ($method == 'DELETE' && $action == 'deleteEmployee') {
+    $id = $_GET['id'] ?? '';
+    $stmt = $pdo->prepare("DELETE FROM employees WHERE id = ?");
+    $stmt->execute([$id]);
+    echo json_encode(["status" => "success"]);
+    exit;
+}
+
+// Buscar Funcionários
+if ($method == 'GET' && $action == 'getEmployees') {
+    $stmt = $pdo->query("SELECT * FROM employees ORDER BY name ASC");
+    echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
     exit;
 }
 

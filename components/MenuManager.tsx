@@ -34,14 +34,32 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
   const [tempCompanyName, setTempCompanyName] = useState(companyName);
   const [newEmployeeName, setNewEmployeeName] = useState('');
 
-  const addEmployee = () => {
+  const addEmployee = async () => {
     if (!newEmployeeName.trim()) return;
-    onUpdateEmployees([...employees, { id: crypto.randomUUID(), name: newEmployeeName.trim() }]);
+    const newEmp = { id: crypto.randomUUID(), name: newEmployeeName.trim() };
+    onUpdateEmployees([...employees, newEmp]);
     setNewEmployeeName('');
+    
+    try {
+      await fetch('/marmitas/api.php?action=saveEmployee', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newEmp)
+      });
+    } catch (err) {
+      console.error("Erro ao salvar funcionário no banco:", err);
+    }
   };
 
-  const removeEmployee = (id: string) => {
+  const removeEmployee = async (id: string) => {
     onUpdateEmployees(employees.filter(e => e.id !== id));
+    try {
+      await fetch(`/marmitas/api.php?action=deleteEmployee&id=${id}`, {
+        method: 'DELETE'
+      });
+    } catch (err) {
+      console.error("Erro ao remover funcionário no banco:", err);
+    }
   };
 
   const addItem = async () => {

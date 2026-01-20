@@ -22,10 +22,11 @@ const App: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [menuRes, ordersRes, settingsRes] = await Promise.all([
+        const [menuRes, ordersRes, settingsRes, employeesRes] = await Promise.all([
           fetch(`${API_URL}?action=getMenu`),
           fetch(`${API_URL}?action=getOrders`),
-          fetch(`${API_URL}?action=getSettings`)
+          fetch(`${API_URL}?action=getSettings`),
+          fetch(`${API_URL}?action=getEmployees`)
         ]);
         
         if (menuRes.ok) {
@@ -65,6 +66,16 @@ const App: React.FC = () => {
             if (settings.company_name) setCompanyName(settings.company_name);
           }
         }
+
+        if (employeesRes.ok) {
+          const text = await employeesRes.text();
+          if (text.trim().startsWith('{') || text.trim().startsWith('[')) {
+            const employeesData = JSON.parse(text);
+            if (Array.isArray(employeesData)) {
+              setEmployees(employeesData);
+            }
+          }
+        }
       } catch (err) {
         console.error("Erro ao carregar dados da API:", err);
       }
@@ -76,9 +87,6 @@ const App: React.FC = () => {
 
   const handleUpdateMenu = async (newMenu: MenuItem[]) => {
     setMenu(newMenu);
-    // Note: In a production environment, we'd handle individual updates to be more efficient
-    // But for now we just sync the last changed item if we had that logic.
-    // To make it simple and reliable for the user:
   };
 
   const handleUpdateCompanyName = async (name: string) => {
@@ -95,7 +103,31 @@ const App: React.FC = () => {
   };
 
   const handleUpdateConfig = (config: CategoryConfig) => setCategoryConfigs(prev => ({ ...prev, [config.category]: config }));
-  const handleUpdateEmployees = (newEmployees: Employee[]) => setEmployees(newEmployees);
+  
+  const handleUpdateEmployees = async (newEmployees: Employee[]) => {
+    // Determine if it was an add or remove by comparing lengths
+    const added = newEmployees.length > employees.length;
+    const removed = newEmployees.length < employees.length;
+    
+    setEmployees(newEmployees);
+
+    if (added) {
+      const newEmp = newEmployees[newEmployees.length - 1];
+      await fetch(`${API_URL}?action=saveEmployee`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newEmp)
+      });
+    }
+    // Deletions are handled directly in MenuManager for better control
+  };
+
+  const handleDeleteEmployee = async (id: string) => {
+    setEmployees(prev => prev.filter(e => e.id !== id));
+    await fetch(`${API_URL}?action=deleteEmployee&id=${id}`, {
+      method: 'DELETE'
+    });
+  };
 
   const handlePlaceOrder = async (order: Order) => {
     try {
