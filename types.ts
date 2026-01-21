@@ -34,5 +34,6 @@ export interface Order {
   id: string;
   employeeName: string;
   selections: Selection;
+  observations?: string;
   timestamp: number;
 }

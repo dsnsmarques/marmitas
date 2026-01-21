@@ -15,6 +15,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ menu, onPlaceOrder, catego
   const [employeeName, setEmployeeName] = useState('');
   const [manualName, setManualName] = useState('');
   const [isManual, setIsManual] = useState(false);
+  const [observations, setObservations] = useState('');
   const [selections, setSelections] = useState<Selection>({
     Principal: [], Mistura: [], Guarnição: [], Salada: [],
   });
@@ -44,6 +45,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ menu, onPlaceOrder, catego
       id: crypto.randomUUID(),
       employeeName: finalName,
       selections,
+      observations: observations.trim(),
       timestamp: Date.now(),
     });
 
@@ -51,6 +53,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ menu, onPlaceOrder, catego
     setEmployeeName('');
     setManualName('');
     setIsManual(false);
+    setObservations('');
     setSelections({ Principal: [], Mistura: [], Guarnição: [], Salada: [] });
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setTimeout(() => setSuccess(false), 4000);
@@ -60,13 +63,42 @@ export const OrderForm: React.FC<OrderFormProps> = ({ menu, onPlaceOrder, catego
     const config = categoryConfigs[category];
     const current = selections[category];
     
-    if (current.includes(itemName)) {
-      setSelections(prev => ({ ...prev, [category]: prev[category].filter(i => i !== itemName) }));
+    // Check if item is already in selection to count occurrences or remove
+    const count = current.filter(i => i.startsWith(itemName)).length;
+    const baseName = itemName;
+
+    if (current.some(i => i.startsWith(baseName))) {
+      // If single selection, just toggle
+      if (config.maxSelections === 1) {
+        setSelections(prev => ({ ...prev, [category]: [] }));
+        return;
+      }
+      
+      // Multi-selection: add another or remove if at max/manual click
+      const currentItems = [...current];
+      const index = currentItems.findLastIndex(i => i.startsWith(baseName));
+      
+      // Logic: Click again adds "2X", "3X"... until maxSelections
+      const totalSelected = currentItems.length;
+      
+      if (totalSelected < config.maxSelections) {
+        // Find if we already have a numbered version
+        const existingIndex = currentItems.findIndex(i => i.startsWith(baseName));
+        const existingMatch = currentItems[existingIndex].match(/(\d+)X\s(.*)/);
+        const currentCount = existingMatch ? parseInt(existingMatch[1]) : 1;
+        
+        currentItems.splice(existingIndex, 1);
+        currentItems.push(`${currentCount + 1}X ${baseName}`);
+        setSelections(prev => ({ ...prev, [category]: currentItems }));
+      } else {
+        // Remove if clicked again and at max or just toggle off
+        setSelections(prev => ({ ...prev, [category]: prev[category].filter(i => !i.startsWith(baseName)) }));
+      }
     } else {
       if (config.maxSelections === 1) {
-        setSelections(prev => ({ ...prev, [category]: [itemName] }));
+        setSelections(prev => ({ ...prev, [category]: [baseName] }));
       } else if (current.length < config.maxSelections) {
-        setSelections(prev => ({ ...prev, [category]: [...prev[category], itemName] }));
+        setSelections(prev => ({ ...prev, [category]: [...prev[category], baseName] }));
       }
     }
   };
@@ -142,26 +174,40 @@ export const OrderForm: React.FC<OrderFormProps> = ({ menu, onPlaceOrder, catego
               <span className="text-[10px] font-black text-gray-300 uppercase">Máx: {categoryConfigs[category].maxSelections}</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {activeMenu.filter(item => item.category === category).map(item => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => handleSelect(category, item.name)}
-                  className={`p-4 text-left border-2 rounded-2xl transition-all relative ${
-                    selections[category].includes(item.name)
-                      ? 'border-orange-500 bg-orange-50 text-orange-700 shadow-lg shadow-orange-100'
-                      : 'border-gray-50 bg-white text-gray-500 hover:border-orange-200'
-                  }`}
-                >
-                  <span className="font-bold text-sm">{item.name}</span>
-                  {selections[category].includes(item.name) && (
-                    <CheckCircle className="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 text-orange-500" />
-                  )}
-                </button>
-              ))}
+              {activeMenu.filter(item => item.category === category).map(item => {
+                const isSelected = selections[category].some(i => i.startsWith(item.name));
+                const selectedText = selections[category].find(i => i.startsWith(item.name)) || '';
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => handleSelect(category, item.name)}
+                    className={`p-4 text-left border-2 rounded-2xl transition-all relative ${
+                      isSelected
+                        ? 'border-orange-500 bg-orange-50 text-orange-700 shadow-lg shadow-orange-100'
+                        : 'border-gray-50 bg-white text-gray-500 hover:border-orange-200'
+                    }`}
+                  >
+                    <span className="font-bold text-sm">{isSelected ? selectedText : item.name}</span>
+                    {isSelected && (
+                      <CheckCircle className="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 text-orange-500" />
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
         ))}
+
+        <div className="space-y-2">
+          <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Observações</label>
+          <textarea
+            value={observations}
+            onChange={(e) => setObservations(e.target.value)}
+            placeholder="Ex: Sem cebola, caprichar no feijão..."
+            className="w-full p-4 border-2 border-gray-50 rounded-2xl focus:border-orange-500 outline-none min-h-[100px] text-sm font-medium text-gray-700"
+          />
+        </div>
 
         <button
           type="submit"

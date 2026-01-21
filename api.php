@@ -27,9 +27,6 @@ $action = $_GET['action'] ?? '';
 
 header('Content-Type: application/json');
 
-// LOG PARA DEBUG (Opcional: remova se não quiser logs no servidor)
-// file_put_contents('log.txt', date('Y-m-d H:i:s') . " - Action: $action, Method: $method\n", FILE_APPEND);
-
 // Buscar Cardápio
 if ($action == 'getMenu') {
     $stmt = $pdo->query("SELECT * FROM menu_items");
@@ -47,6 +44,7 @@ if ($action == 'getOrders') {
     $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
     foreach ($orders as &$o) { 
         $o['selections'] = json_decode($o['selections'], true); 
+        $o['observations'] = $o['observations'] ?? '';
     }
     echo json_encode($orders);
     exit;
@@ -67,25 +65,6 @@ if ($action == 'getSettings') {
         $settings[$row['config_key']] = $row['config_value'];
     }
     echo json_encode($settings);
-    exit;
-}
-
-// Salvar Configuração de Categoria (Máx Seleções e Obrigatório)
-if ($method == 'POST' && $action == 'saveCategoryConfig') {
-    $data = json_decode(file_get_contents("php://input"), true);
-    if (!$data || !isset($data['category'])) {
-        http_response_code(400);
-        echo json_encode(["error" => "Dados inválidos"]);
-        exit;
-    }
-    $key = "category_config_" . $data['category'];
-    $value = json_encode([
-        "maxSelections" => $data['maxSelections'],
-        "isRequired" => $data['isRequired']
-    ]);
-    $stmt = $pdo->prepare("INSERT INTO settings (config_key, config_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE config_value = VALUES(config_value)");
-    $stmt->execute([$key, $value]);
-    echo json_encode(["status" => "success"]);
     exit;
 }
 
@@ -136,14 +115,29 @@ if ($method == 'POST' && $action == 'saveSetting') {
     exit;
 }
 
+// Salvar Configuração de Categoria
+if ($method == 'POST' && $action == 'saveCategoryConfig') {
+    $data = json_decode(file_get_contents("php://input"), true);
+    $key = "category_config_" . $data['category'];
+    $value = json_encode([
+        "maxSelections" => $data['maxSelections'],
+        "isRequired" => $data['isRequired']
+    ]);
+    $stmt = $pdo->prepare("INSERT INTO settings (config_key, config_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE config_value = VALUES(config_value)");
+    $stmt->execute([$key, $value]);
+    echo json_encode(["status" => "success"]);
+    exit;
+}
+
 // Salvar Pedido
 if ($method == 'POST' && $action == 'saveOrder') {
     $data = json_decode(file_get_contents("php://input"), true);
-    $stmt = $pdo->prepare("INSERT INTO orders (id, employeeName, selections, timestamp) VALUES (?, ?, ?, ?)");
+    $stmt = $pdo->prepare("INSERT INTO orders (id, employeeName, selections, observations, timestamp) VALUES (?, ?, ?, ?, ?)");
     $stmt->execute([
         $data['id'], 
         $data['employeeName'], 
         json_encode($data['selections']), 
+        $data['observations'] ?? '',
         $data['timestamp'] ?? (time() * 1000)
     ]);
     echo json_encode(["status" => "success"]);
@@ -180,11 +174,6 @@ if ($method == 'DELETE' && $action == 'deleteOrder') {
 // Alterar Senha Admin
 if ($method == 'POST' && $action == 'changeAdminPassword') {
     $data = json_decode(file_get_contents("php://input"), true);
-    if (!isset($data['newPassword'])) {
-        http_response_code(400);
-        echo json_encode(["error" => "Dados inválidos"]);
-        exit;
-    }
     $hashedPassword = password_hash($data['newPassword'], PASSWORD_DEFAULT);
     $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE username = 'admin'");
     $stmt->execute([$hashedPassword]);
@@ -198,5 +187,4 @@ if ($method == 'DELETE' && $action == 'clearOrders') {
     echo json_encode(["status" => "success"]);
     exit;
 }
-?>
 ?>

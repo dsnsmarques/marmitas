@@ -33,6 +33,9 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onClearOrders, onD
           });
         }
       });
+      if (order.observations) {
+        text += `\nObs: ${order.observations}\n`;
+      }
       text += `\n`; 
     });
 
@@ -154,6 +157,12 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onClearOrders, onD
                   </div>
                 </div>
               ))}
+              {order.observations && (
+                <div className="pt-2 border-t border-gray-50">
+                  <span className="text-[10px] font-black uppercase text-orange-400 tracking-widest block mb-1">Observações</span>
+                  <p className="text-xs text-gray-600 italic font-medium bg-orange-50/50 p-2 rounded-lg leading-relaxed">{order.observations}</p>
+                </div>
+              )}
             </div>
             <div className="mt-6 pt-3 border-t border-gray-50 text-[10px] text-gray-300 font-bold flex justify-between items-center">
               <span>#{order.id.slice(0, 4)}</span>

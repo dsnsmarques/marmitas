@@ -52,6 +52,7 @@ const App: React.FC = () => {
                 id: o.id,
                 employeeName: o.employeeName,
                 selections: typeof o.selections === 'string' ? JSON.parse(o.selections) : o.selections,
+                observations: o.observations || '',
                 timestamp: Number(o.timestamp)
               })));
             }
