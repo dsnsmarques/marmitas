@@ -188,6 +188,21 @@ const App: React.FC = () => {
     }
   };
 
+  const handleUnlaunchOrders = async (ids: string[]) => {
+    try {
+      const response = await fetch(`${API_URL}?action=unlaunchOrders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      if (response.ok) {
+        setOrders(prev => prev.map(o => ids.includes(o.id) ? { ...o, launched: 0 } : o));
+      }
+    } catch (err) {
+      console.error("Erro ao reverter lançamento:", err);
+    }
+  };
+
   const handleClearOrders = async () => {
     try {
       if (confirm('Deseja limpar todos os pedidos da tela? Isso não apagará o histórico do banco de dados.')) {
@@ -272,6 +287,7 @@ const App: React.FC = () => {
               onClearOrders={handleClearOrders} 
               onDeleteOrder={handleDeleteOrder} 
               onLaunchOrders={handleLaunchOrders}
+              onUnlaunchOrders={handleUnlaunchOrders}
               companyName={companyName} 
             />
           )}

@@ -63,42 +63,50 @@ export const OrderForm: React.FC<OrderFormProps> = ({ menu, onPlaceOrder, catego
     const config = categoryConfigs[category];
     const current = selections[category];
     
-    // Check if item is already in selection to count occurrences or remove
-    const count = current.filter(i => i.startsWith(itemName)).length;
-    const baseName = itemName;
+    // Find if the item (or a numbered version of it) is already selected
+    const existingIndex = current.findIndex(i => i === itemName || i.endsWith(`X ${itemName}`));
+    const isSelected = existingIndex !== -1;
 
-    if (current.some(i => i.startsWith(baseName))) {
-      // If single selection, just toggle
+    if (isSelected) {
+      const selectedItem = current[existingIndex];
+      // Check if it's already a numbered item (e.g., "2X Batata rústica")
+      const match = selectedItem.match(/^(\d+)X\s(.*)/);
+      const currentCount = match ? parseInt(match[1]) : 1;
+      const baseName = match ? match[2] : selectedItem;
+
       if (config.maxSelections === 1) {
+        // Toggle off if max is 1
         setSelections(prev => ({ ...prev, [category]: [] }));
-        return;
-      }
-      
-      // Multi-selection: add another or remove if at max/manual click
-      const currentItems = [...current];
-      const index = currentItems.findLastIndex(i => i.startsWith(baseName));
-      
-      // Logic: Click again adds "2X", "3X"... until maxSelections
-      const totalSelected = currentItems.length;
-      
-      if (totalSelected < config.maxSelections) {
-        // Find if we already have a numbered version
-        const existingIndex = currentItems.findIndex(i => i.startsWith(baseName));
-        const existingMatch = currentItems[existingIndex].match(/(\d+)X\s(.*)/);
-        const currentCount = existingMatch ? parseInt(existingMatch[1]) : 1;
-        
-        currentItems.splice(existingIndex, 1);
-        currentItems.push(`${currentCount + 1}X ${baseName}`);
-        setSelections(prev => ({ ...prev, [category]: currentItems }));
       } else {
-        // Remove if clicked again and at max or just toggle off
-        setSelections(prev => ({ ...prev, [category]: prev[category].filter(i => !i.startsWith(baseName)) }));
+        // Multi-selection logic
+        const totalItemsInCat = current.reduce((acc, item) => {
+          const m = item.match(/^(\d+)X\s(.*)/);
+          return acc + (m ? parseInt(m[1]) : 1);
+        }, 0);
+
+        if (totalItemsInCat < config.maxSelections) {
+          // Increment quantity
+          const newItems = [...current];
+          newItems[existingIndex] = `${currentCount + 1}X ${baseName}`;
+          setSelections(prev => ({ ...prev, [category]: newItems }));
+        } else {
+          // At max, toggle off the item entirely
+          setSelections(prev => ({ ...prev, [category]: prev[category].filter((_, idx) => idx !== existingIndex) }));
+        }
       }
     } else {
-      if (config.maxSelections === 1) {
-        setSelections(prev => ({ ...prev, [category]: [baseName] }));
-      } else if (current.length < config.maxSelections) {
-        setSelections(prev => ({ ...prev, [category]: [...prev[category], baseName] }));
+      // Not selected yet, try to add
+      const totalItemsInCat = current.reduce((acc, item) => {
+        const m = item.match(/^(\d+)X\s(.*)/);
+        return acc + (m ? parseInt(m[1]) : 1);
+      }, 0);
+
+      if (totalItemsInCat < config.maxSelections) {
+        if (config.maxSelections === 1) {
+          setSelections(prev => ({ ...prev, [category]: [itemName] }));
+        } else {
+          setSelections(prev => ({ ...prev, [category]: [...current, itemName] }));
+        }
       }
     }
   };
@@ -175,8 +183,8 @@ export const OrderForm: React.FC<OrderFormProps> = ({ menu, onPlaceOrder, catego
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {activeMenu.filter(item => item.category === category).map(item => {
-                const isSelected = selections[category].some(i => i.startsWith(item.name));
-                const selectedText = selections[category].find(i => i.startsWith(item.name)) || '';
+                const selectedEntry = selections[category].find(i => i === item.name || i.endsWith(`X ${item.name}`));
+                const isSelected = !!selectedEntry;
                 return (
                   <button
                     key={item.id}
@@ -188,7 +196,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ menu, onPlaceOrder, catego
                         : 'border-gray-50 bg-white text-gray-500 hover:border-orange-200'
                     }`}
                   >
-                    <span className="font-bold text-sm">{isSelected ? selectedText : item.name}</span>
+                    <span className="font-bold text-sm">{isSelected ? selectedEntry : item.name}</span>
                     {isSelected && (
                       <CheckCircle className="w-5 h-5 absolute right-3 top-1/2 -translate-y-1/2 text-orange-500" />
                     )}

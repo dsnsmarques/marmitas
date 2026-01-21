@@ -1,7 +1,7 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Order, Category, CATEGORIES } from '../types';
-import { Share2, Trash2, ClipboardCheck, FileSpreadsheet, Download, Utensils } from 'lucide-react';
+import { Share2, Trash2, ClipboardCheck, FileSpreadsheet, Utensils, RotateCcw, Lock } from 'lucide-react';
 import * as XLSX from 'https://esm.sh/xlsx';
 
 interface OrderListProps {
@@ -9,10 +9,14 @@ interface OrderListProps {
   onClearOrders: () => void;
   onDeleteOrder: (id: string) => void;
   onLaunchOrders: (ids: string[]) => void;
+  onUnlaunchOrders: (ids: string[]) => void;
   companyName: string;
 }
 
-export const OrderList: React.FC<OrderListProps> = ({ orders, onClearOrders, onDeleteOrder, onLaunchOrders, companyName }) => {
+export const OrderList: React.FC<OrderListProps> = ({ orders, onClearOrders, onDeleteOrder, onLaunchOrders, onUnlaunchOrders, companyName }) => {
+  const [masterPassword, setMasterPassword] = useState('');
+  const [showUnlaunchModal, setShowUnlaunchModal] = useState<string[] | null>(null);
+
   const formatSelection = (items: string[]) => items.length > 0 ? items.join(', ') : 'Nenhuma opção escolhida';
 
   // Specific formatting function as requested by the user
@@ -90,9 +94,20 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onClearOrders, onD
     XLSX.writeFile(workbook, fileName);
   };
 
-  const unlaunchedOrders = orders.filter(o => !o.launched);
-  const launchedOrders = orders.filter(o => o.launched);
+  const handleUnlaunch = () => {
+    if (masterPassword === 'MASTER2026') { // Senha mestre mestre definida aqui
+      if (showUnlaunchModal) {
+        onUnlaunchOrders(showUnlaunchModal);
+      }
+      setMasterPassword('');
+      setShowUnlaunchModal(null);
+    } else {
+      alert('Senha mestre incorreta!');
+    }
+  };
 
+  const unlaunchedOrders = orders.filter(o => !o.launched);
+  
   // Financial Stats
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -113,6 +128,42 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onClearOrders, onD
 
   return (
     <div className="space-y-6">
+      {showUnlaunchModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4">
+          <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full border border-gray-100">
+            <div className="bg-orange-50 p-4 rounded-2xl mb-6 flex items-center gap-3">
+              <Lock className="w-8 h-8 text-orange-600" />
+              <div>
+                <h3 className="font-black text-gray-900 uppercase">Acesso Restrito</h3>
+                <p className="text-xs text-orange-600 font-bold">Senha mestre para reverter lançamento</p>
+              </div>
+            </div>
+            <input
+              type="password"
+              value={masterPassword}
+              onChange={(e) => setMasterPassword(e.target.value)}
+              placeholder="Digite a senha mestre"
+              className="w-full p-4 border-2 border-gray-50 rounded-2xl focus:border-orange-500 outline-none text-center text-lg font-black tracking-widest mb-6"
+              autoFocus
+            />
+            <div className="flex gap-3">
+              <button 
+                onClick={() => { setShowUnlaunchModal(null); setMasterPassword(''); }}
+                className="flex-1 p-4 bg-gray-50 hover:bg-gray-100 text-gray-400 font-black rounded-2xl transition-all"
+              >
+                CANCELAR
+              </button>
+              <button 
+                onClick={handleUnlaunch}
+                className="flex-1 p-4 bg-orange-600 hover:bg-orange-700 text-white font-black rounded-2xl transition-all shadow-xl shadow-orange-100"
+              >
+                REVERTER
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Finance/Stats Dashboard */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
@@ -182,42 +233,66 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onClearOrders, onD
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {orders.map((order) => (
           <div key={order.id} className={`bg-white p-6 rounded-2xl shadow-sm border transition-all transform hover:-translate-y-1 relative group ${order.launched ? 'border-green-100 bg-green-50/10' : 'border-gray-100 hover:border-orange-200'}`}>
-            {!order.launched && (
-              <button
-                onClick={() => onDeleteOrder(order.id)}
-                className="absolute top-4 right-4 text-gray-200 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <Trash2 className="w-5 h-5" />
-              </button>
-            )}
-            {order.launched && (
-              <div className="absolute top-4 right-4 text-green-500" title="Pedido Lançado">
-                <ClipboardCheck className="w-5 h-5" />
-              </div>
-            )}
-            <h4 className="font-black text-lg text-gray-900 mb-4 border-b border-gray-50 pb-2 pr-8 truncate tracking-tight">
+            <div className="absolute top-4 right-4 flex gap-2">
+              {!order.launched ? (
+                <>
+                  <button
+                    onClick={() => onLaunchOrders([order.id])}
+                    className="text-gray-200 hover:text-green-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Lançar Pedido"
+                  >
+                    <Utensils className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => onDeleteOrder(order.id)}
+                    className="text-gray-200 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Excluir Pedido"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setShowUnlaunchModal([order.id])}
+                    className="text-gray-200 hover:text-orange-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Reverter Lançamento"
+                  >
+                    <RotateCcw className="w-5 h-5" />
+                  </button>
+                  <div className="text-green-500" title="Pedido Lançado">
+                    <ClipboardCheck className="w-5 h-5" />
+                  </div>
+                </>
+              )}
+            </div>
+            <h4 className="font-black text-lg text-gray-900 mb-4 border-b border-gray-50 pb-2 pr-12 truncate tracking-tight">
               {order.employeeName.toUpperCase()}
             </h4>
             <div className="space-y-4">
-              {CATEGORIES.map(cat => (
-                <div key={cat} className="group/cat">
-                  <span className="text-[10px] font-black uppercase text-gray-300 group-hover/cat:text-orange-400 tracking-widest block mb-1 transition-colors">{cat}</span>
-                  <div className="text-sm text-gray-700 font-semibold leading-relaxed">
-                    {order.selections[cat as Category] && order.selections[cat as Category].length > 0 ? (
-                      <ul className="list-none space-y-0.5">
-                        {order.selections[cat as Category].map((item, i) => (
-                          <li key={i} className="flex items-center gap-1">
-                            <div className="w-1.5 h-1.5 bg-orange-200 rounded-full"></div>
-                            {item}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <span className="text-gray-400 font-normal italic">Vazio</span>
-                    )}
+              {CATEGORIES.map(cat => {
+                const selections = typeof order.selections === 'string' ? JSON.parse(order.selections) : order.selections;
+                const catItems = selections[cat as Category] || [];
+                return (
+                  <div key={cat} className="group/cat">
+                    <span className="text-[10px] font-black uppercase text-gray-300 group-hover/cat:text-orange-400 tracking-widest block mb-1 transition-colors">{cat}</span>
+                    <div className="text-sm text-gray-700 font-semibold leading-relaxed">
+                      {catItems.length > 0 ? (
+                        <ul className="list-none space-y-0.5">
+                          {catItems.map((item: string, i: number) => (
+                            <li key={i} className="flex items-center gap-1">
+                              <div className="w-1.5 h-1.5 bg-orange-200 rounded-full"></div>
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span className="text-gray-400 font-normal italic">Vazio</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {order.observations && (
                 <div className="pt-2 border-t border-gray-50">
                   <span className="text-[10px] font-black uppercase text-orange-400 tracking-widest block mb-1">Observações</span>

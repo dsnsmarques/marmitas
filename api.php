@@ -158,6 +158,19 @@ if ($method == 'POST' && $action == 'launchOrders') {
     exit;
 }
 
+// Reverter Lançamento de Pedidos
+if ($method == 'POST' && $action == 'unlaunchOrders') {
+    $data = json_decode(file_get_contents("php://input"), true);
+    $ids = $data['ids'] ?? [];
+    if (!empty($ids)) {
+        $placeholders = str_repeat('?,', count($ids) - 1) . '?';
+        $stmt = $pdo->prepare("UPDATE orders SET launched = 0 WHERE id IN ($placeholders)");
+        $stmt->execute($ids);
+    }
+    echo json_encode(["status" => "success"]);
+    exit;
+}
+
 // Deletar Funcionário
 if ($method == 'DELETE' && $action == 'deleteEmployee') {
     $id = $_GET['id'] ?? '';
