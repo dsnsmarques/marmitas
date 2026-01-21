@@ -8,10 +8,11 @@ interface OrderListProps {
   orders: Order[];
   onClearOrders: () => void;
   onDeleteOrder: (id: string) => void;
+  onLaunchOrders: (ids: string[]) => void;
   companyName: string;
 }
 
-export const OrderList: React.FC<OrderListProps> = ({ orders, onClearOrders, onDeleteOrder, companyName }) => {
+export const OrderList: React.FC<OrderListProps> = ({ orders, onClearOrders, onDeleteOrder, onLaunchOrders, companyName }) => {
   const formatSelection = (items: string[]) => items.length > 0 ? items.join(', ') : 'Nenhuma opção escolhida';
 
   // Specific formatting function as requested by the user
@@ -20,9 +21,13 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onClearOrders, onD
     text += `📅 Data: ${new Date().toLocaleDateString('pt-BR')}\n`;
     text += `--------------------------------\n\n`;
 
-    ordersList.forEach((order, index) => {
-      text += `*${order.employeeName}*\n\n`;
+    ordersList.forEach((order) => {
+      text += `*${order.employeeName}*\n`;
       
+      if (order.observations) {
+        text += `- OBS: ${order.observations}\n`;
+      }
+
       const selections = typeof order.selections === 'string' ? JSON.parse(order.selections) : order.selections;
       
       CATEGORIES.forEach(cat => {
@@ -33,9 +38,6 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onClearOrders, onD
           });
         }
       });
-      if (order.observations) {
-        text += `\nObs: ${order.observations}\n`;
-      }
       text += `\n`; 
     });
 
@@ -69,10 +71,13 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onClearOrders, onD
         'Funcionário': order.employeeName.toUpperCase(),
       };
       
+      const selections = typeof order.selections === 'string' ? JSON.parse(order.selections) : order.selections;
       CATEGORIES.forEach(cat => {
-        row[cat] = formatSelection(order.selections[cat as Category]);
+        row[cat] = formatSelection(selections[cat as Category] || []);
       });
       
+      row['Observações'] = order.observations || '';
+      row['Status'] = order.launched ? 'Lançado' : 'Pendente';
       row['Data/Hora'] = new Date(order.timestamp).toLocaleString('pt-BR');
       return row;
     });
@@ -85,14 +90,63 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onClearOrders, onD
     XLSX.writeFile(workbook, fileName);
   };
 
+  const unlaunchedOrders = orders.filter(o => !o.launched);
+  const launchedOrders = orders.filter(o => o.launched);
+
+  // Financial Stats
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  
+  const weekStart = new Date();
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+  weekStart.setHours(0, 0, 0, 0);
+
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+
+  const stats = {
+    today: orders.filter(o => o.launched && o.timestamp >= todayStart.getTime()).length,
+    week: orders.filter(o => o.launched && o.timestamp >= weekStart.getTime()).length,
+    month: orders.filter(o => o.launched && o.timestamp >= monthStart.getTime()).length
+  };
+
   return (
     <div className="space-y-6">
+      {/* Finance/Stats Dashboard */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
+          <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Pedidos Lançados (Hoje)</span>
+          <span className="text-3xl font-black text-orange-600">{stats.today}</span>
+        </div>
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
+          <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Fechamento Semanal</span>
+          <span className="text-3xl font-black text-blue-600">{stats.week}</span>
+        </div>
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
+          <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Fechamento Mensal</span>
+          <span className="text-3xl font-black text-green-600">{stats.month}</span>
+        </div>
+      </div>
+
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
         <div>
           <h3 className="text-2xl font-black text-gray-800 tracking-tight">Relatório Consolidado</h3>
           <p className="text-sm text-gray-500 font-medium">Empresa: {companyName} • {orders.length} pedidos hoje</p>
         </div>
         <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+          {unlaunchedOrders.length > 0 && (
+            <button
+              onClick={() => {
+                if (confirm(`Deseja lançar ${unlaunchedOrders.length} pedidos pendentes? Eles não poderão mais ser excluídos.`)) {
+                  onLaunchOrders(unlaunchedOrders.map(o => o.id));
+                }
+              }}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-5 py-3 rounded-xl font-bold transition-all shadow-lg shadow-orange-100 text-sm"
+            >
+              <Utensils className="w-5 h-5" /> Lançar Pedidos
+            </button>
+          )}
           <button
             onClick={copyToClipboard}
             className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-gray-50 hover:bg-gray-100 text-gray-700 px-5 py-3 rounded-xl font-bold transition-all border border-gray-200 text-sm"
@@ -113,7 +167,7 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onClearOrders, onD
           </button>
           <button
             onClick={() => {
-              if (confirm('Deseja limpar todos os pedidos do dia? Isso é permanente.')) {
+              if (confirm('Deseja limpar todos os pedidos da tela? Isso não apagará o histórico do banco de dados.')) {
                 onClearOrders();
               }
             }}
@@ -127,13 +181,20 @@ export const OrderList: React.FC<OrderListProps> = ({ orders, onClearOrders, onD
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
         {orders.map((order) => (
-          <div key={order.id} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative group hover:border-orange-200 transition-all transform hover:-translate-y-1">
-            <button
-              onClick={() => onDeleteOrder(order.id)}
-              className="absolute top-4 right-4 text-gray-200 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <Trash2 className="w-5 h-5" />
-            </button>
+          <div key={order.id} className={`bg-white p-6 rounded-2xl shadow-sm border transition-all transform hover:-translate-y-1 relative group ${order.launched ? 'border-green-100 bg-green-50/10' : 'border-gray-100 hover:border-orange-200'}`}>
+            {!order.launched && (
+              <button
+                onClick={() => onDeleteOrder(order.id)}
+                className="absolute top-4 right-4 text-gray-200 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            )}
+            {order.launched && (
+              <div className="absolute top-4 right-4 text-green-500" title="Pedido Lançado">
+                <ClipboardCheck className="w-5 h-5" />
+              </div>
+            )}
             <h4 className="font-black text-lg text-gray-900 mb-4 border-b border-gray-50 pb-2 pr-8 truncate tracking-tight">
               {order.employeeName.toUpperCase()}
             </h4>

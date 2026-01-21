@@ -36,4 +36,5 @@ export interface Order {
   selections: Selection;
   observations?: string;
   timestamp: number;
+  launched?: boolean | number;
 }

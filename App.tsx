@@ -53,7 +53,8 @@ const App: React.FC = () => {
                 employeeName: o.employeeName,
                 selections: typeof o.selections === 'string' ? JSON.parse(o.selections) : o.selections,
                 observations: o.observations || '',
-                timestamp: Number(o.timestamp)
+                timestamp: Number(o.timestamp),
+                launched: Number(o.launched) === 1
               })));
             }
           }
@@ -172,9 +173,24 @@ const App: React.FC = () => {
     }
   };
 
+  const handleLaunchOrders = async (ids: string[]) => {
+    try {
+      const response = await fetch(`${API_URL}?action=launchOrders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      if (response.ok) {
+        setOrders(prev => prev.map(o => ids.includes(o.id) ? { ...o, launched: 1 } : o));
+      }
+    } catch (err) {
+      console.error("Erro ao lançar pedidos:", err);
+    }
+  };
+
   const handleClearOrders = async () => {
     try {
-      if (confirm('Deseja limpar todos os pedidos?')) {
+      if (confirm('Deseja limpar todos os pedidos da tela? Isso não apagará o histórico do banco de dados.')) {
         setOrders([]);
         await fetch(`${API_URL}?action=clearOrders`, { method: 'DELETE' });
       }
@@ -185,6 +201,11 @@ const App: React.FC = () => {
 
   const handleDeleteOrder = async (id: string) => {
     try {
+      const orderToDelete = orders.find(o => o.id === id);
+      if (orderToDelete?.launched) {
+        alert("Pedidos lançados não podem ser excluídos.");
+        return;
+      }
       setOrders(prev => prev.filter(o => o.id !== id));
       await fetch(`${API_URL}?action=deleteOrder&id=${id}`, { method: 'DELETE' });
     } catch (err) {
@@ -245,7 +266,15 @@ const App: React.FC = () => {
       ) : (
         <main className="max-w-6xl mx-auto px-4 pt-6 pb-12">
           {activeTab === 'order' && <OrderForm menu={menu} onPlaceOrder={handlePlaceOrder} categoryConfigs={categoryConfigs} companyName={companyName} employees={employees} />}
-          {activeTab === 'report' && isLoggedIn && <OrderList orders={orders} onClearOrders={handleClearOrders} onDeleteOrder={handleDeleteOrder} companyName={companyName} />}
+          {activeTab === 'report' && isLoggedIn && (
+            <OrderList 
+              orders={orders} 
+              onClearOrders={handleClearOrders} 
+              onDeleteOrder={handleDeleteOrder} 
+              onLaunchOrders={handleLaunchOrders}
+              companyName={companyName} 
+            />
+          )}
           {activeTab === 'admin' && isLoggedIn && (
             <MenuManager 
               menu={menu} onUpdateMenu={handleUpdateMenu} 

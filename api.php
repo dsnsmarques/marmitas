@@ -45,6 +45,7 @@ if ($action == 'getOrders') {
     foreach ($orders as &$o) { 
         $o['selections'] = json_decode($o['selections'], true); 
         $o['observations'] = $o['observations'] ?? '';
+        $o['launched'] = (int)($o['launched'] ?? 0);
     }
     echo json_encode($orders);
     exit;
@@ -132,7 +133,7 @@ if ($method == 'POST' && $action == 'saveCategoryConfig') {
 // Salvar Pedido
 if ($method == 'POST' && $action == 'saveOrder') {
     $data = json_decode(file_get_contents("php://input"), true);
-    $stmt = $pdo->prepare("INSERT INTO orders (id, employeeName, selections, observations, timestamp) VALUES (?, ?, ?, ?, ?)");
+    $stmt = $pdo->prepare("INSERT INTO orders (id, employeeName, selections, observations, timestamp, launched) VALUES (?, ?, ?, ?, ?, 0)");
     $stmt->execute([
         $data['id'], 
         $data['employeeName'], 
@@ -140,6 +141,19 @@ if ($method == 'POST' && $action == 'saveOrder') {
         $data['observations'] ?? '',
         $data['timestamp'] ?? (time() * 1000)
     ]);
+    echo json_encode(["status" => "success"]);
+    exit;
+}
+
+// Marcar Pedidos como Lançados
+if ($method == 'POST' && $action == 'launchOrders') {
+    $data = json_decode(file_get_contents("php://input"), true);
+    $ids = $data['ids'] ?? [];
+    if (!empty($ids)) {
+        $placeholders = str_repeat('?,', count($ids) - 1) . '?';
+        $stmt = $pdo->prepare("UPDATE orders SET launched = 1 WHERE id IN ($placeholders)");
+        $stmt->execute($ids);
+    }
     echo json_encode(["status" => "success"]);
     exit;
 }
@@ -181,9 +195,8 @@ if ($method == 'POST' && $action == 'changeAdminPassword') {
     exit;
 }
 
-// Limpar Pedidos
+// Limpar Pedidos (Apenas visualmente/diário)
 if ($method == 'DELETE' && $action == 'clearOrders') {
-    $pdo->exec("DELETE FROM orders");
     echo json_encode(["status" => "success"]);
     exit;
 }
